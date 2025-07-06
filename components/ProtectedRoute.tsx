@@ -7,48 +7,41 @@ import LoadingSpinner from './LoadingSpinner';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredRole?: 'ADMIN' | 'STUDENT';
-  redirectTo?: string;
+  requiredRole?: 'admin' | 'student';
 }
 
-export default function ProtectedRoute({ 
-  children, 
-  requiredRole, 
-  redirectTo = '/login' 
-}: ProtectedRouteProps) {
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRole }) => {
   const { user, userRole, loading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
     if (!loading) {
       if (!user) {
-        router.push(redirectTo);
-      } else if (requiredRole && userRole?.role !== requiredRole) {
-        // Redirect to appropriate dashboard based on user role
-        if (userRole?.role === 'ADMIN') {
-          router.push('/dashboard');
+        router.push('/login');
+      } else if (requiredRole && userRole !== requiredRole) {
+        // Redirect based on actual role
+        if (userRole === 'admin') {
+          router.push('/admin');
         } else {
           router.push('/dashboard');
         }
       }
     }
-  }, [user, userRole, loading, requiredRole, redirectTo, router]);
+  }, [user, userRole, loading, router, requiredRole]);
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 flex items-center justify-center">
-        <LoadingSpinner />
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   if (!user) {
-    return null;
+    return null; // Will redirect to login
   }
 
-  if (requiredRole && userRole?.role !== requiredRole) {
-    return null;
+  if (requiredRole && userRole !== requiredRole) {
+    return null; // Will redirect based on role
   }
 
   return <>{children}</>;
-} 
+};
+
+export default ProtectedRoute; 

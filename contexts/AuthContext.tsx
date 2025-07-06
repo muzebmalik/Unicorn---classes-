@@ -1,33 +1,38 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import { 
   User, 
   signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword, 
   signOut, 
   onAuthStateChanged 
 } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
-
-interface UserRole {
-  role: 'ADMIN' | 'STUDENT';
-  name: string;
-}
 
 interface AuthContextType {
   user: User | null;
-  userRole: UserRole | null;
+  userRole: 'admin' | 'student' | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, role: 'admin' | 'student') => Promise<void>;
   logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
+
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [userRole, setUserRole] = useState<UserRole | null>(null);
+  const [userRole, setUserRole] = useState<'admin' | 'student' | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -35,14 +40,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(user);
       
       if (user) {
-        // Fetch user role from Firestore
-        try {
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
-          if (userDoc.exists()) {
-            setUserRole(userDoc.data() as UserRole);
+        // Check user role in Firestore
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        if (userDoc.exists()) {
+          setUserRole(userDoc.data().role);
+        } else {
+          // If user doesn't exist in Firestore, check if it's the admin email
+          if (user.email === 'muzebmaliko1@gmail.com') {
+            setUserRole('admin');
+            // Create admin user in Firestore
+            await setDoc(doc(db, 'users', user.uid), {
+              email: user.email,
+              role: 'admin',
+              createdAt: new Date()
+            });
+          } else {
+            setUserRole('student');
+            // Create student user in Firestore
+            await setDoc(doc(db, 'users', user.uid), {
+              email: user.email,
+              role: 'student',
+              createdAt: new Date()
+            });
           }
-        } catch (error) {
-          console.error('Error fetching user role:', error);
         }
       } else {
         setUserRole(null);
@@ -57,16 +77,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signIn = async (email: string, password: string) => {
     try {
       await signInWithEmailAndPassword(auth, email, password);
-    } catch (error) {
-      throw error;
+    } catch (error: any) {
+      throw new Error(error.message);
+    }
+  };
+
+  const signUp = async (email: string, password: string, role: 'admin' | 'student') => {
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      
+      // Save user role to Firestore
+      await setDoc(doc(db, 'users', user.uid), {
+        email: user.email,
+        role: role,
+        createdAt: new Date()
+      });
+    } catch (error: any) {
+      throw new Error(error.message);
     }
   };
 
   const logout = async () => {
     try {
       await signOut(auth);
-    } catch (error) {
-      console.error('Error signing out:', error);
+    } catch (error: any) {
+      throw new Error(error.message);
     }
   };
 
@@ -75,7 +111,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     userRole,
     loading,
     signIn,
-    logout,
+    signUp,
+    logout
   };
 
   return (
@@ -83,12 +120,4 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       {children}
     </AuthContext.Provider>
   );
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-} 
+}; 

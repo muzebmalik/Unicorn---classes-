@@ -56,7 +56,7 @@ export default function Header() {
                 <Link href="/dashboard" className="nav-link">
                   Dashboard
                 </Link>
-                {userRole?.role === 'ADMIN' && (
+                {userRole === 'admin' && (
                   <Link href="/admin" className="nav-link">
                     Admin Panel
                   </Link>
@@ -92,7 +92,7 @@ export default function Header() {
                 placeholder="Search notes, topics, chapters..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-gray-100 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200"
+                className="w-full pl-10 pr-4 py-2 bg-gray-100 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
               />
             </div>
           </div>
@@ -103,14 +103,14 @@ export default function Header() {
               <>
                 <div className="hidden sm:flex items-center space-x-2">
                   <span className="text-sm text-gray-600">
-                    {userRole?.name || user.email}
+                    {user.email}
                   </span>
                   <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                    userRole?.role === 'ADMIN' 
-                      ? 'bg-primary-100 text-primary-800' 
+                    userRole === 'admin' 
+                      ? 'bg-indigo-100 text-indigo-800' 
                       : 'bg-green-100 text-green-800'
                   }`}>
-                    {userRole?.role === 'ADMIN' ? 'Admin' : 'Student'}
+                    {userRole === 'admin' ? 'Admin' : 'Student'}
                   </span>
                 </div>
                 <button
@@ -124,7 +124,7 @@ export default function Header() {
             ) : (
               <Link
                 href="/login"
-                className="hidden sm:inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors duration-200 font-medium"
+                className="hidden sm:inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors duration-200 font-medium"
               >
                 <User className="w-4 h-4 mr-2" />
                 Login
@@ -155,7 +155,7 @@ export default function Header() {
               placeholder="Search notes, topics, chapters..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-gray-100 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200"
+                              className="w-full pl-10 pr-4 py-2 bg-gray-100 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
             />
           </div>
         </div>
@@ -174,7 +174,7 @@ export default function Header() {
                 >
                   Dashboard
                 </Link>
-                {userRole?.role === 'ADMIN' && (
+                {userRole === 'admin' && (
                   <Link
                     href="/admin"
                     className="block px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors duration-200"

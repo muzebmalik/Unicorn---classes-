@@ -1,137 +1,75 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { 
-  BookOpen, 
-  FileText, 
-  Bell, 
-  Search, 
-  LogOut,
-  FileVideo,
-  FileImage,
-  FilePdf,
-  Download,
-  Eye
-} from 'lucide-react';
-import Link from 'next/link';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import toast from 'react-hot-toast';
+import { FileText, LogOut, BookOpen, Search } from 'lucide-react';
 
-export default function StudentDashboard() {
-  const { user, userRole, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState('materials');
-  const [searchQuery, setSearchQuery] = useState('');
+interface Note {
+  id: string;
+  title: string;
+  content: string;
+  createdAt: Date;
+  createdBy: string;
+}
 
-  const handleLogout = async () => {
-    await logout();
+const StudentDashboard: React.FC = () => {
+  const { user, logout } = useAuth();
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [filteredNotes, setFilteredNotes] = useState<Note[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchNotes();
+  }, []);
+
+  useEffect(() => {
+    const filtered = notes.filter(note =>
+      note.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      note.content.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    setFilteredNotes(filtered);
+  }, [searchTerm, notes]);
+
+  const fetchNotes = async () => {
+    try {
+      const querySnapshot = await getDocs(collection(db, 'notes'));
+      const notesData = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate() || new Date()
+      })) as Note[];
+      setNotes(notesData.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()));
+      setFilteredNotes(notesData);
+    } catch (error) {
+      toast.error('Error fetching notes');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const tabs = [
-    { id: 'materials', label: 'Study Materials', icon: FileText },
-    { id: 'announcements', label: 'Announcements', icon: Bell },
-    { id: 'quizzes', label: 'Quizzes', icon: BookOpen },
-  ];
-
-  const studyMaterials = [
-    {
-      id: 1,
-      title: 'Math Chapter 1 - Algebra Basics',
-      type: 'PDF',
-      size: '2.3 MB',
-      subject: 'Mathematics',
-      uploadedAt: '2 days ago',
-      icon: FilePdf,
-      color: 'text-red-500'
-    },
-    {
-      id: 2,
-      title: 'Science Lab Video - Chemical Reactions',
-      type: 'Video',
-      size: '15.2 MB',
-      subject: 'Science',
-      uploadedAt: '1 week ago',
-      icon: FileVideo,
-      color: 'text-blue-500'
-    },
-    {
-      id: 3,
-      title: 'History Timeline - World War II',
-      type: 'Image',
-      size: '1.1 MB',
-      subject: 'History',
-      uploadedAt: '3 days ago',
-      icon: FileImage,
-      color: 'text-green-500'
-    },
-    {
-      id: 4,
-      title: 'English Literature - Shakespeare Analysis',
-      type: 'PDF',
-      size: '3.7 MB',
-      subject: 'English',
-      uploadedAt: '5 days ago',
-      icon: FilePdf,
-      color: 'text-red-500'
+  const handleLogout = async () => {
+    try {
+      await logout();
+      toast.success('Logged out successfully!');
+    } catch (error) {
+      toast.error('Error logging out');
     }
-  ];
+  };
 
-  const announcements = [
-    {
-      id: 1,
-      title: 'Exam Schedule Update',
-      content: 'The final exams have been rescheduled to next week. Please check the updated timetable in your student portal.',
-      postedAt: '2 hours ago',
-      priority: 'high'
-    },
-    {
-      id: 2,
-      title: 'New Study Materials Available',
-      content: 'Check out the new practice questions for Chapter 5. These will help you prepare for the upcoming quiz.',
-      postedAt: '1 day ago',
-      priority: 'normal'
-    },
-    {
-      id: 3,
-      title: 'Library Hours Extended',
-      content: 'The school library will now be open until 8 PM on weekdays to help with your studies.',
-      postedAt: '3 days ago',
-      priority: 'normal'
-    }
-  ];
-
-  const quizzes = [
-    {
-      id: 1,
-      title: 'Math Quiz - Chapter 1',
-      subject: 'Mathematics',
-      questions: 15,
-      timeLimit: 30,
-      status: 'available',
-      dueDate: '2024-01-15'
-    },
-    {
-      id: 2,
-      title: 'Science Quiz - Lab Safety',
-      subject: 'Science',
-      questions: 10,
-      timeLimit: 20,
-      status: 'completed',
-      score: 85
-    },
-    {
-      id: 3,
-      title: 'History Quiz - World War II',
-      subject: 'History',
-      questions: 12,
-      timeLimit: 25,
-      status: 'upcoming',
-      dueDate: '2024-01-20'
-    }
-  ];
-
-  const filteredMaterials = studyMaterials.filter(material =>
-    material.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    material.subject.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading notes...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -140,20 +78,18 @@ export default function StudentDashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-4">
-              <Link href="/" className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-accent-500 rounded-lg flex items-center justify-center">
-                  <BookOpen className="w-5 h-5 text-white" />
-                </div>
-                <span className="text-xl font-bold text-gray-900">Unicorn Classes</span>
-              </Link>
+              <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-lg flex items-center justify-center">
+                <BookOpen className="w-5 h-5 text-white" />
+              </div>
+              <span className="text-xl font-bold text-gray-900">Unicorn Classes</span>
               <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
-                Student Portal
+                Student Dashboard
               </span>
             </div>
             
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-600">
-                Welcome, {userRole?.name || user?.email}
+                Welcome, {user?.email}
               </span>
               <button
                 onClick={handleLogout}
@@ -168,149 +104,98 @@ export default function StudentDashboard() {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Tabs */}
-        <div className="border-b border-gray-200 mb-8">
-          <nav className="-mb-px flex space-x-8">
-            {tabs.map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center space-x-2 py-2 px-1 border-b-2 font-medium text-sm ${
-                    activeTab === tab.id
-                      ? 'border-primary-500 text-primary-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  <Icon className="w-4 h-4" />
-                  <span>{tab.label}</span>
-                </button>
-              );
-            })}
-          </nav>
+        {/* Search Bar */}
+        <div className="mb-8">
+          <div className="max-w-md">
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type="text"
+                placeholder="Search notes..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              />
+            </div>
+          </div>
         </div>
 
-        {/* Content */}
-        <div className="space-y-6">
-          {activeTab === 'materials' && (
-            <div className="bg-white rounded-lg shadow-sm border">
-              <div className="p-6 border-b border-gray-200">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-lg font-medium text-gray-900">Study Materials</h2>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                    <input
-                      type="text"
-                      placeholder="Search materials..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    />
+        {/* Notes Grid */}
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">
+            Study Notes ({filteredNotes.length})
+          </h2>
+          
+          {filteredNotes.length === 0 ? (
+            <div className="text-center py-12">
+              <FileText className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900">No notes found</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                {searchTerm ? 'Try adjusting your search terms.' : 'No notes have been uploaded yet.'}
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredNotes.map((note) => (
+                <div key={note.id} className="bg-white overflow-hidden shadow rounded-lg hover:shadow-md transition-shadow">
+                  <div className="p-6">
+                    <div className="flex items-center mb-4">
+                      <div className="p-2 bg-indigo-100 rounded-lg">
+                        <FileText className="w-5 h-5 text-indigo-600" />
+                      </div>
+                      <div className="ml-3">
+                        <h3 className="text-lg font-medium text-gray-900">{note.title}</h3>
+                        <p className="text-sm text-gray-500">
+                          Created: {note.createdAt.toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="prose prose-sm text-gray-600">
+                      <p className="whitespace-pre-wrap">{note.content}</p>
+                    </div>
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                      <p className="text-xs text-gray-500">
+                        By: {note.createdBy}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
-              
-              <div className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {filteredMaterials.map((material) => {
-                    const Icon = material.icon;
-                    return (
-                      <div key={material.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center space-x-3">
-                            <Icon className={`w-8 h-8 ${material.color}`} />
-                            <div>
-                              <h3 className="font-medium text-gray-900">{material.title}</h3>
-                              <p className="text-sm text-gray-500">{material.subject}</p>
-                              <p className="text-xs text-gray-400">{material.type} • {material.size}</p>
-                              <p className="text-xs text-gray-400">Uploaded {material.uploadedAt}</p>
-                            </div>
-                          </div>
-                          <div className="flex space-x-2">
-                            <button className="p-1 text-gray-400 hover:text-gray-600">
-                              <Eye className="w-4 h-4" />
-                            </button>
-                            <button className="p-1 text-gray-400 hover:text-gray-600">
-                              <Download className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+              ))}
             </div>
           )}
+        </div>
 
-          {activeTab === 'announcements' && (
-            <div className="bg-white rounded-lg shadow-sm border">
-              <div className="p-6 border-b border-gray-200">
-                <h2 className="text-lg font-medium text-gray-900">Announcements</h2>
-              </div>
-              
-              <div className="p-6">
-                <div className="space-y-4">
-                  {announcements.map((announcement) => (
-                    <div key={announcement.id} className="border border-gray-200 rounded-lg p-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <h3 className="font-medium text-gray-900">{announcement.title}</h3>
-                            {announcement.priority === 'high' && (
-                              <span className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">Important</span>
-                            )}
-                          </div>
-                          <p className="text-sm text-gray-600">{announcement.content}</p>
-                          <p className="text-xs text-gray-500 mt-2">Posted {announcement.postedAt}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+        {/* Quick Stats */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Quick Stats</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-indigo-600">{notes.length}</div>
+              <div className="text-sm text-gray-600">Total Notes</div>
             </div>
-          )}
-
-          {activeTab === 'quizzes' && (
-            <div className="bg-white rounded-lg shadow-sm border">
-              <div className="p-6 border-b border-gray-200">
-                <h2 className="text-lg font-medium text-gray-900">Quizzes</h2>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-600">
+                {notes.filter(note => {
+                  const oneWeekAgo = new Date();
+                  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+                  return note.createdAt > oneWeekAgo;
+                }).length}
               </div>
-              
-              <div className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {quizzes.map((quiz) => (
-                    <div key={quiz.id} className="border border-gray-200 rounded-lg p-4">
-                      <h3 className="font-medium text-gray-900">{quiz.title}</h3>
-                      <p className="text-sm text-gray-500 mt-1">{quiz.subject}</p>
-                      <p className="text-sm text-gray-500">{quiz.questions} questions • {quiz.timeLimit} minutes</p>
-                      
-                      <div className="mt-3 flex items-center justify-between">
-                        {quiz.status === 'available' && (
-                          <button className="px-3 py-1 bg-primary-600 text-white text-sm rounded-lg hover:bg-primary-700 transition-colors">
-                            Start Quiz
-                          </button>
-                        )}
-                        {quiz.status === 'completed' && (
-                          <div className="flex items-center space-x-2">
-                            <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Completed</span>
-                            <span className="text-sm text-gray-600">Score: {quiz.score}%</span>
-                          </div>
-                        )}
-                        {quiz.status === 'upcoming' && (
-                          <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">Upcoming</span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <div className="text-sm text-gray-600">New This Week</div>
             </div>
-          )}
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-600">
+                {new Set(notes.map(note => note.createdBy)).size}
+              </div>
+              <div className="text-sm text-gray-600">Teachers</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   );
-} 
+};
+
+export default StudentDashboard; 

@@ -3,39 +3,33 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import AdminDashboard from '@/components/AdminDashboard';
-import StudentDashboard from '@/components/StudentDashboard';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import StudentDashboard from '@/components/StudentDashboard';
 
 export default function DashboardPage() {
   const { user, userRole, loading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.push('/login');
+    if (!loading) {
+      if (!user) {
+        router.push('/login');
+      } else if (userRole === 'admin') {
+        router.push('/admin');
+      } else if (userRole === 'student') {
+        // Stay on dashboard page for students
+        return;
+      }
     }
-  }, [user, loading, router]);
+  }, [user, userRole, loading, router]);
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 flex items-center justify-center">
-        <LoadingSpinner />
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
-  if (!user) {
-    return null;
+  if (!user || userRole !== 'student') {
+    return null; // Will redirect
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50">
-      {userRole?.role === 'ADMIN' ? (
-        <AdminDashboard />
-      ) : (
-        <StudentDashboard />
-      )}
-    </div>
-  );
+  return <StudentDashboard />;
 } 
